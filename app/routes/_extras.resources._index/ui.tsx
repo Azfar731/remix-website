@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router";
 import cx from "clsx";
 import iconsHref from "~/icons.svg";
 import { slugify } from "~/ui/primitives/utils";
+import { useEffect, useRef, useState } from "react";
 
 export let categories = ["all", "templates", "libraries"];
 
@@ -117,7 +118,11 @@ export function ResourceCards({
   if (resources.length > 0) {
     return resources.map(({ title, description, tags, ...props }) => (
       <div key={title} className="text-sm">
-        <ResourcePoster to={`/resources/${slugify(title)}`} {...props} />
+        <ResourcePoster
+          title={title}
+          to={`/resources/${slugify(title)}`}
+          {...props}
+        />
         <h2 className="mt-4 font-medium text-gray-900 dark:text-gray-100">
           {title}
         </h2>
@@ -160,9 +165,11 @@ type ResourcePosterProps = Pick<
   /** make the poster a link */
   to?: string;
   className?: string;
+  title?: Resource["title"];
 };
 
 function ResourcePoster({
+  title,
   to,
   imgSrc,
   repoUrl,
@@ -171,10 +178,18 @@ function ResourcePoster({
   sponsorUrl,
   className,
 }: ResourcePosterProps) {
+  const placeHolderImg = {
+    backgroundColor: "282C34",
+    textColor: "61DAFB",
+    width: "600", // in pixels
+    height: "300", // in pixels
+    text: encodeURIComponent(title ? title : "Remix Resource"),
+  };
   let img = (
-    <img
-      src={imgSrc}
-      alt=""
+    <ImgWithFallback
+      imgSrc={imgSrc}
+      fallbackImgSrc={`https://placehold.co/${placeHolderImg.width}x${placeHolderImg.height}/${placeHolderImg.backgroundColor}/${placeHolderImg.textColor}/png?text=${placeHolderImg.text}`}
+      alt="Resource preview image"
       className={cx(
         "h-full w-full rounded-t-lg border border-b-0 border-gray-100 object-cover object-center dark:border-gray-800",
         to &&
@@ -250,6 +265,53 @@ function GitHubLinks({
           <span className="font-medium">Sponsor</span>
         </a>
       ) : null}
+    </div>
+  );
+}
+
+interface ImgWithFallbackProps
+  extends React.ImgHTMLAttributes<HTMLImageElement> {
+  imgSrc: string;
+  fallbackImgSrc: string;
+  alt: string;
+  className: string;
+}
+
+function ImgWithFallback({
+  imgSrc,
+  fallbackImgSrc,
+  alt,
+  className,
+  ...rest
+}: ImgWithFallbackProps) {
+  const [hasError, setHasError] = useState(false);
+  
+
+  useEffect(() => {
+    const img = new Image();
+    // Attach listeners FIRST
+    img.onload = () => {
+      console.log("On load fired (preloaded)\n src:", imgSrc);
+      setHasError(false);
+    };
+    img.onerror = () => {
+      console.log("On Error fired (preloaded)\n src:", imgSrc);
+      setHasError(true);
+    };
+  
+    // Set src AFTER attaching listeners
+    img.src = imgSrc;
+  }, [imgSrc]);
+
+  return (
+    <div className="w-full">
+      {/* Display the fallback image only if the original image fails */}
+        <img
+          src={hasError? fallbackImgSrc : imgSrc}
+          alt={alt}
+          className={className}
+          {...rest}
+        />
     </div>
   );
 }
